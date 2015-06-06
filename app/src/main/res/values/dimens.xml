@@ -2,9 +2,4 @@
     <!-- Default screen margins, per the Android Design guidelines. -->
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
-
-    <dimen name="detail_cover_height">456dp</dimen>
-    <dimen name="default_arc_width">2dp</dimen>
-
-    <dimen name="grid_item_height">250dp</dimen>
 </resources>
