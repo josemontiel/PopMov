@@ -2,4 +2,16 @@
     <string name="app_name">PopMov</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="popularity_desc">popularity.desc</string>
+    <string name="utf_8" translatable="false">UTF-8</string>
+    <string name="movie_poster_description">Movie Poster</string>
+    <string name="title_activity_detail">DetailActivity</string>
+    <string name="overview">Overview</string>
+
+<!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="trailer">Trailer</string>
+    <string name="action_sort">Sort</string>
+    <string name="most_popular_title">Most Popular</string>
+    <string name="highest_rated_title">Highest Rated</string>
 </resources>
