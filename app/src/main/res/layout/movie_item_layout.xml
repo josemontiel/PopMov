@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="200dp"
+    android:layout_height="250dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_margin="@dimen/abc_action_bar_default_padding_material"
+    android:background="@drawable/movie_item_shape"
+    android:elevation="4dp">
+
+    <ImageView
+        android:id="@+id/movie_item_poster_imageview"
+        android:layout_width="200dp"
+        android:layout_height="250dp"
+        android:scaleType="centerCrop"
+        android:contentDescription="@string/movie_poster_description"/>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="fill_parent"
+        android:layout_alignParentBottom="true"
+        android:background="#80000000"
+        android:padding="@dimen/abc_list_item_padding_horizontal_material">
+
+        <RelativeLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:id="@+id/movie_item_name_textview"
+                android:layout_centerInParent="true"
+                android:gravity="center"
+                android:textColor="@android:color/white" />
+
+            <com.engtoolsdev.popmov.views.RatingView
+                android:id="@+id/movie_item_ratingview"
+                android:layout_width="40dp"
+                android:layout_alignParentBottom="false"
+                android:layout_alignParentRight="false"
+                android:layout_alignParentEnd="false"
+                app:animate="false"
+                android:layout_height="40dp"
+                android:layout_centerHorizontal="true"
+                android:layout_below="@+id/movie_item_name_textview" />
+
+        </RelativeLayout>
+    </FrameLayout>
+
+</RelativeLayout>
