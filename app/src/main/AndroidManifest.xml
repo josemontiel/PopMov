@@ -5,28 +5,44 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".PopMovApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/Theme.PopMov" >
+
         <activity
             android:name=".MainActivity"
-            android:label="@string/app_name" >
+            android:launchMode="singleTop"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.PopMov.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".DetailActivity"
             android:label="@string/title_activity_detail"
             android:parentActivityName=".MainActivity"
-            android:theme="@style/Theme.PopMov.NoActionBar">
+            android:theme="@style/Theme.PopMov.NoActionBar" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.engtoolsdev.popmov.MainActivity" />
         </activity>
+
+        <activity
+            android:name=".ReviewActivity"
+            android:label="@string/title_activity_review" >
+        </activity>
+
+        <provider
+            android:name=".contentprovider.PopMovContentProvider"
+            android:authorities="com.engtoolsdev.popmov.contentprovider" >
+        </provider>
+
     </application>
 
 </manifest>

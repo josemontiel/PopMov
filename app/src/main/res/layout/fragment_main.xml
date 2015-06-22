@@ -5,6 +5,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".MainActivityFragment">
 
+
+
     <android.support.v4.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_layout"
         android:layout_width="match_parent"
@@ -17,7 +19,9 @@
 
     </android.support.v4.widget.SwipeRefreshLayout>
 
-    <include layout="@layout/progress_layout"/>
+    <include layout="@layout/progress_layout"
+        android:layout_height="match_parent"
+        android:layout_width="match_parent" />
 
 </RelativeLayout>
 

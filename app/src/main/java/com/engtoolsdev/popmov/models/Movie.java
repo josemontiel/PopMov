@@ -8,6 +8,7 @@ import android.os.Parcelable;
  */
 public class Movie implements Parcelable {
 
+    private long id;
     private String title;
     private String imageId;
     private String overView;
@@ -15,6 +16,7 @@ public class Movie implements Parcelable {
     private double voteAverage;
     private long voteCount;
     private String releaseDate;
+    private boolean isFavorite = false;
 
 
     /**
@@ -27,7 +29,8 @@ public class Movie implements Parcelable {
      * @param releaseDate {@link String} release date of the movie.
      */
 
-    public Movie(String title, String imageId, String overView, double rating, double voteAverage, long voteCount, String releaseDate) {
+    public Movie(long id, String title, String imageId, String overView, double rating, double voteAverage, long voteCount, String releaseDate) {
+        this.id = id;
         this.title = title;
         this.imageId = imageId;
         this.overView = overView;
@@ -38,6 +41,37 @@ public class Movie implements Parcelable {
     }
 
 
+    protected Movie(Parcel in) {
+        id = in.readLong();
+        title = in.readString();
+        imageId = in.readString();
+        overView = in.readString();
+        rating = in.readDouble();
+        voteAverage = in.readDouble();
+        voteCount = in.readLong();
+        releaseDate = in.readString();
+        isFavorite = in.readByte() != 0;
+    }
+
+    public static final Creator<Movie> CREATOR = new Creator<Movie>() {
+        @Override
+        public Movie createFromParcel(Parcel in) {
+            return new Movie(in);
+        }
+
+        @Override
+        public Movie[] newArray(int size) {
+            return new Movie[size];
+        }
+    };
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
 
     public String getTitle() {
         return title;
@@ -95,32 +129,14 @@ public class Movie implements Parcelable {
         return voteCount;
     }
 
-
-    /**
-     *Parcelable interface implementation
-     */
-
-    private Movie(Parcel in) {
-        title = in.readString();
-        imageId = in.readString();
-        overView = in.readString();
-        rating = in.readDouble();
-        voteAverage = in.readDouble();
-        voteCount = in.readLong();
-        releaseDate = in.readString();
+    public void setIsFavorite(boolean isFavorite) {
+        this.isFavorite = isFavorite;
     }
 
-    public static final Creator<Movie> CREATOR = new Creator<Movie>() {
-        @Override
-        public Movie createFromParcel(Parcel in) {
-            return new Movie(in);
-        }
+    public boolean isFavorite() {
+        return isFavorite;
+    }
 
-        @Override
-        public Movie[] newArray(int size) {
-            return new Movie[size];
-        }
-    };
 
     @Override
     public int describeContents() {
@@ -129,6 +145,7 @@ public class Movie implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeLong(id);
         dest.writeString(title);
         dest.writeString(imageId);
         dest.writeString(overView);
@@ -136,5 +153,6 @@ public class Movie implements Parcelable {
         dest.writeDouble(voteAverage);
         dest.writeLong(voteCount);
         dest.writeString(releaseDate);
+        dest.writeByte((byte) (isFavorite ? 1 : 0));
     }
 }
