@@ -22,7 +22,7 @@ public class RatingView extends View {
     private static final double MAX_VOTE_AVERAGE = 10.0;
 
 
-    Double averageVote = null;
+    Double averageVote = 0.0;
 
     private float screenDensity = getResources().getDisplayMetrics().density;
 

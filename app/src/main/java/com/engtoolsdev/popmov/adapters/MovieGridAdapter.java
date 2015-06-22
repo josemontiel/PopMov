@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.engtoolsdev.popmov.DetailActivity;
+import com.engtoolsdev.popmov.MainActivity;
 import com.engtoolsdev.popmov.R;
 import com.engtoolsdev.popmov.models.Movie;
 import com.engtoolsdev.popmov.views.RatingView;
@@ -25,10 +26,13 @@ public class MovieGridAdapter extends RecyclerView.Adapter<MovieGridAdapter.Movi
     Context context;
     ArrayList<Movie> movieItems;
     private static final String POSTER_URL = "http://image.tmdb.org/t/p/%s%s";
+    private static String POSTER_RES;
 
     public MovieGridAdapter(Context context, ArrayList<Movie> movies){
         this.context = context;
         this.movieItems = movies;
+
+        POSTER_RES = context.getString(R.string.poster_res);
     }
 
     @Override
@@ -52,13 +56,11 @@ public class MovieGridAdapter extends RecyclerView.Adapter<MovieGridAdapter.Movi
             holder.posterView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Intent intent = new Intent(context, DetailActivity.class);
-                    intent.putExtra("movie", movie);
-                    context.startActivity(intent);
+                    ((MainActivity) context).loadMovie(movie);
                 }
             });
 
-            Glide.with(context).load(String.format(POSTER_URL, "w185", movie.getImageId())).crossFade().into(holder.posterView);
+            Glide.with(context).load(String.format(POSTER_URL, POSTER_RES, movie.getImageId())).crossFade().into(holder.posterView);
         }
     }
 

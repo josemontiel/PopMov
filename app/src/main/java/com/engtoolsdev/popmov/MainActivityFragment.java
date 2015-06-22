@@ -1,13 +1,18 @@
 package com.engtoolsdev.popmov;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SwitchCompat;
+
 import android.util.JsonReader;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -15,45 +20,77 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CompoundButton;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 
 import com.engtoolsdev.popmov.adapters.MovieGridAdapter;
+import com.engtoolsdev.popmov.contentprovider.PopMovContentProvider;
 import com.engtoolsdev.popmov.models.Movie;
+import com.engtoolsdev.popmov.sql.contracts.FavoriteContract;
 import com.engtoolsdev.popmov.utils.Api;
-
-import org.json.JSONObject;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
+import com.engtoolsdev.popmov.utils.ApiUtil;
+import com.engtoolsdev.popmov.utils.SubscriptionCache;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-
-import retrofit.Callback;
 import retrofit.RestAdapter;
-import retrofit.RetrofitError;
 import retrofit.client.Response;
-import timber.log.Timber;
+import rx.Observable;
+import rx.Subscription;
+import rx.android.app.AppObservable;
+import rx.functions.Action1;
+import rx.functions.Func1;
 
 /**
  * A placeholder fragment containing a simple view.
  */
 public class MainActivityFragment extends Fragment implements SwipeRefreshLayout.OnRefreshListener{
 
+    private static final String KEY_SUBSCRIPTION_CACHE = "refresh_movie_list";
+
     private static final String MOVIE_ITEMS = "movie_items";
     private static final int POPULARITY_SORT = 0;
     private static final int RATING_SORT = 1;
     private static final String SORTING_CRITERIA_EXTRA = "sorting_criteria";
+
+    private boolean multiPane;
+
     int sortingCriteria;
 
     RecyclerView recyclerView;
     FrameLayout progressView;
     SwipeRefreshLayout swipeRefreshLayout;
+    TextView titleView;
 
     ArrayList<Movie> movieItems = new ArrayList<>();
+    ArrayList<Movie> movieItemsDatabase = new ArrayList<>();
     private MovieGridAdapter adapter;
+
+    private Action1<ArrayList<Movie>> refreshAction = new Action1<ArrayList<Movie>>() {
+        @Override
+        public void call(ArrayList<Movie> movies) {
+            movieItems.clear();
+            movieItems.addAll(movies);
+
+            //Sorts the movie items
+            sort(sortingCriteria);
+
+
+
+            //We hide the progress bar
+            showProgress(false);
+
+            //We hide the refresh widget in case it was manually refreshed
+            swipeRefreshLayout.setRefreshing(false);
+
+
+
+            SubscriptionCache.getInstance().remove(KEY_SUBSCRIPTION_CACHE);
+        }
+    };
 
     public MainActivityFragment() {
     }
@@ -62,6 +99,8 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
+        multiPane = getResources().getBoolean(R.bool.multi_pane);
 
         View view = inflater.inflate(R.layout.fragment_main, container, false);
 
@@ -78,6 +117,16 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
+        titleView = ((MainActivity) getActivity()).titleView;
+
+        SwitchCompat faveSwitch = ((MainActivity) getActivity()).faveSwitch;
+        faveSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                sortFaves(isChecked);
+            }
+        });
+
         SharedPreferences sharedPreferences = getActivity().getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
         sortingCriteria = sharedPreferences.getInt(SORTING_CRITERIA_EXTRA, POPULARITY_SORT);
 
@@ -87,7 +136,6 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
 
         if(savedInstanceState == null) {
             refreshMovies();
-
         }else{
             if(savedInstanceState.containsKey(MOVIE_ITEMS)) {
                 ArrayList<Movie> movies = savedInstanceState.getParcelableArrayList(MOVIE_ITEMS);
@@ -95,8 +143,29 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
                 adapter.notifyDataSetChanged();
 
                 showProgress(false);
+            }else {
+                refreshMovies();
             }
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        if(SubscriptionCache.getInstance().contains(KEY_SUBSCRIPTION_CACHE)) {
+            Observable<ArrayList<Movie>> request = (Observable<ArrayList<Movie>>) SubscriptionCache.getInstance().get(KEY_SUBSCRIPTION_CACHE);
+            request.subscribe(refreshAction);
+        }
+
+        setFavorites(movieItems);
     }
 
     @Override
@@ -145,58 +214,59 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
     /**
      * Calls the API using {@link RestAdapter}
      */
+    @SuppressWarnings("unchecked")
     private void refreshMovies() {
-        RestAdapter restAdapter = new RestAdapter.Builder()
-                .setEndpoint(Api.API_ENDPOINT)
-                .setLogLevel(RestAdapter.LogLevel.FULL)
-                .build();
 
-        Api api = restAdapter.create(Api.class);
+        Api api = ApiUtil.getApi();
 
+        Observable<ArrayList<Movie>> request = null;
 
-        api.fetchMovies(getString(R.string.popularity_desc), getString(R.string.api_key), new Callback<Response>() {
-            @Override
-            public void success(Response response, Response response2) {
+        if(!SubscriptionCache.getInstance().contains(KEY_SUBSCRIPTION_CACHE)) {
+            request = AppObservable.bindFragment(this, api.fetchMovies(getString(R.string.popularity_desc), getString(R.string.api_key)))
+                    .map(new Func1<Response, ArrayList<Movie>>() {
+                        @Override
+                        public ArrayList<Movie> call(Response response) {
+                            ArrayList<Movie> results = new ArrayList<>();
+                            try {
+                                JsonReader jsonReader = new JsonReader(new InputStreamReader(response.getBody().in(), getString(R.string.utf_8)));
+                                jsonReader.beginObject();
+                                while (jsonReader.hasNext()) {
+                                    String key = jsonReader.nextName();
+                                    switch (key) {
+                                        case "results":
+                                            results.addAll(readResults(jsonReader));
+                                            break;
+                                        default:
+                                            jsonReader.skipValue();
+                                            break;
+                                    }
+                                }
+                                jsonReader.endObject();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
 
-                ArrayList<Movie> results = new ArrayList<>();
-                try {
-                    JsonReader jsonReader = new JsonReader(new InputStreamReader(response.getBody().in(), getString(R.string.utf_8)));
-                    jsonReader.beginObject();
-                    while (jsonReader.hasNext()) {
-                        String key = jsonReader.nextName();
-                        switch (key) {
-                            case "results":
-                                results.addAll(readResults(jsonReader));
-                                break;
-                            default:
-                                jsonReader.skipValue();
-                                break;
+                            setFavorites(results);
+
+                            return results;
                         }
-                    }
-                    jsonReader.endObject();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                    })
+                    .onErrorReturn(new Func1<Throwable, ArrayList<Movie>>() {
+                        @Override
+                        public ArrayList<Movie> call(Throwable throwable) {
+                            return loadOfflineFavorites();
+                        }
+                    })
+                    .cache();
 
-                movieItems.clear();
-                movieItems.addAll(results);
+            SubscriptionCache.getInstance().put(KEY_SUBSCRIPTION_CACHE, request);
+        }else{
+            request = (Observable<ArrayList<Movie>>) SubscriptionCache.getInstance().get(KEY_SUBSCRIPTION_CACHE);
+        }
 
-                //Sorts the movie items
-                sort(sortingCriteria);
 
-                //We hide the progress bar
-                showProgress(false);
+        request.subscribe(refreshAction);
 
-                //We hide the refresh widget in case it was manually refreshed
-                swipeRefreshLayout.setRefreshing(false);
-
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                Timber.d(error.getMessage());
-            }
-        });
     }
 
     /**
@@ -226,6 +296,7 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
      */
     private Movie readMovie(JsonReader jsonReader) throws IOException{
 
+        long id = 0;
         String title = null;
         String imageReference = null;
         String overview = null;
@@ -238,6 +309,9 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
         while (jsonReader.hasNext()){
             String key = jsonReader.nextName();
             switch (key){
+                case "id":
+                    id = jsonReader.nextLong();
+                    break;
                 case "original_title":
                     title = jsonReader.nextString();
                     break;
@@ -266,20 +340,16 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
         }
         jsonReader.endObject();
 
-        return new Movie(title, imageReference, overview, rating, voteAverage, voteCount, releaseDate);
-    }
-
-
-    @Override
-    public void onResume() {
-        super.onResume();
+        return new Movie(id, title, imageReference, overview, rating, voteAverage, voteCount, releaseDate);
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        outState.putParcelableArrayList(MOVIE_ITEMS, movieItems);
+        if(movieItems.size() != 0) {
+            outState.putParcelableArrayList(MOVIE_ITEMS, movieItems);
+        }
     }
 
     /**
@@ -322,7 +392,7 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
 
     private void sort(int criteria) {
 
-        Comparator<Movie> sortComparator = null;
+        Comparator<Movie> sortComparator;
 
         if (criteria == POPULARITY_SORT) {
             sortComparator = new Comparator<Movie>() {
@@ -349,18 +419,118 @@ public class MainActivityFragment extends Fragment implements SwipeRefreshLayout
         adapter.notifyDataSetChanged();
     }
 
+
+    /**
+     * Filters the Movies by Favorites
+     * @param showFaves show or not favorites
+     */
+
+    private void sortFaves(boolean showFaves) {
+
+        if(showFaves) {
+            movieItemsDatabase = new ArrayList<>(movieItems);
+
+            for (Movie movie : movieItemsDatabase) {
+                if (!movie.isFavorite()) {
+                    movieItems.remove(movie);
+                }
+            }
+        }else{
+            if(movieItemsDatabase != null){
+                movieItems.clear();
+                movieItems.addAll(movieItemsDatabase);
+
+                movieItemsDatabase = null;
+            }
+        }
+
+        sort(sortingCriteria);
+    }
+
+
     /**
      * Changes the {@link android.support.v7.widget.Toolbar} title depending on the sorting criteria selected
      */
 
     public void setSortingTitle(){
-        switch (sortingCriteria){
+
+        switch (sortingCriteria) {
             case POPULARITY_SORT:
-                getActivity().setTitle(getString(R.string.most_popular_title));
+                titleView.setText(R.string.most_popular_title);
                 break;
             case RATING_SORT:
-                getActivity().setTitle(getString(R.string.highest_rated_title));
+                titleView.setText(R.string.highest_rated_title);
                 break;
         }
+
+    }
+
+    public void loadMovie(Movie movie){
+        if(!multiPane){
+            Intent intent = new Intent(getActivity(), DetailActivity.class);
+            intent.putExtra("movie", movie);
+            startActivity(intent);
+        }else{
+            DetailFragment detailFragment = (DetailFragment) getActivity().getSupportFragmentManager().findFragmentById(R.id.fragment_right);
+            detailFragment.setMovie(movie);
+        }
+    }
+
+    public void setFavorites(ArrayList<Movie> movies){
+
+        for(Movie movie : movies) {
+
+            Cursor cursor= getActivity().getContentResolver().query(PopMovContentProvider.CONTENT_URI, new String[]{FavoriteContract.COLUMN_MOVIE_ID}, FavoriteContract.COLUMN_MOVIE_ID + " = ?", new String[]{String.valueOf(movie.getId())}, null);
+
+            if (cursor.moveToFirst()) {
+                movie.setIsFavorite(cursor.getCount() == 1);
+            }
+
+            cursor.close();
+
+        }
+
+    }
+
+
+    /**
+     * Loads favorites stored in DB. Used in case user is offline or API returns 0 items
+     */
+    public ArrayList<Movie> loadOfflineFavorites(){
+
+        ArrayList<Movie> movies = new ArrayList<>();
+
+        String[] projection = new String[]{
+                FavoriteContract.COLUMN_MOVIE_ID,
+                FavoriteContract.COLUMN_TITLE,
+                FavoriteContract.COLUMN_IMAGE_ID,
+                FavoriteContract.COLUMN_OVERVIEW,
+                FavoriteContract.COLUMN_RATING,
+                FavoriteContract.COLUMN_VOTE_AVG,
+                FavoriteContract.COLUMN_VOTE_COUNT,
+                FavoriteContract.COLUMN_RELEASE_DATE
+        };
+
+        Cursor cursor = getActivity().getContentResolver().query(PopMovContentProvider.CONTENT_URI, projection, null, null, null);
+
+        for(cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()){
+            long id = Long.valueOf(cursor.getString(cursor.getColumnIndex(FavoriteContract.COLUMN_MOVIE_ID)));
+            String title = cursor.getString(cursor.getColumnIndex(FavoriteContract.COLUMN_TITLE));
+            String imageId = cursor.getString(cursor.getColumnIndex(FavoriteContract.COLUMN_IMAGE_ID));
+            String overview = cursor.getString(cursor.getColumnIndex(FavoriteContract.COLUMN_OVERVIEW));
+            double rating = cursor.getDouble(cursor.getColumnIndex(FavoriteContract.COLUMN_RATING));
+            double voteAvg = cursor.getDouble(cursor.getColumnIndex(FavoriteContract.COLUMN_VOTE_AVG));
+            long count = cursor.getLong(cursor.getColumnIndex(FavoriteContract.COLUMN_VOTE_COUNT));
+            String release = cursor.getString(cursor.getColumnIndex(FavoriteContract.COLUMN_RELEASE_DATE));
+
+            Movie movie = new Movie(id, title, imageId, overview, rating, voteAvg, count, release);
+            movie.setIsFavorite(true);
+
+            movies.add(movie);
+        }
+
+        return movies;
     }
 }
+
+

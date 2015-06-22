@@ -1,0 +1,68 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/main_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="@style/PopMov.Toolbar">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:id="@+id/main_toolbar_title"
+                android:textColor="@android:color/white" />
+
+            <android.support.v7.widget.SwitchCompat
+                android:id="@+id/fave_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                app:showText="true"
+                android:textOn="\u2605"
+                android:textOff="\u2606"
+                android:layout_gravity="right|center_vertical"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true" />
+
+        </RelativeLayout>
+
+    </android.support.v7.widget.Toolbar>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:baselineAligned="false"
+        android:animateLayoutChanges="true">
+
+        <fragment xmlns:android="http://schemas.android.com/apk/res/android"
+            android:name="com.engtoolsdev.popmov.MainActivityFragment"
+            tools:layout="@layout/fragment_main"
+            android:id="@+id/fragment"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            class="com.engtoolsdev.popmov.MainActivityFragment" />
+
+        <fragment
+            android:id="@+id/fragment_right"
+            android:name="com.engtoolsdev.popmov.DetailFragment"
+            tools:layout="@layout/fragment_detail"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            class="com.engtoolsdev.popmov.DetailFragment" />
+    </LinearLayout>
+
+</LinearLayout>
