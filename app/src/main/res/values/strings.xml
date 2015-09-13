@@ -2,4 +2,21 @@
     <string name="app_name">PopMov</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="popularity_desc">popularity.desc</string>
+    <string name="utf_8" translatable="false">UTF-8</string>
+    <string name="movie_poster_description">Movie Poster</string>
+    <string name="title_activity_detail" translatable="false" >DetailActivity</string>
+    <string name="overview">Overview</string>
+
+    <string name="trailers">Trailers</string>
+    <string name="action_sort">Sort</string>
+    <string name="most_popular_title">Most Popular</string>
+    <string name="highest_rated_title">Highest Rated</string>
+    <string name="trailer_thumbnail_content_desc">Trailer Thumbnail</string>
+    <string name="reviews">Reviews</string>
+    <string name="title_activity_review">Reviews</string>
+    <string name="review_empty_text">There are no reviews for this movie yet</string>
+    <string name="poster_res">w185</string>
+    <string name="cover_res">w342</string>
+    <string name="share">Share</string>
 </resources>
